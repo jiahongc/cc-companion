@@ -48,7 +48,7 @@ Open the `.dmg`, drag CC Companion to your Applications folder, and launch it. T
 If you prefer to run from source or want to contribute:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cc-companion.git
+git clone https://github.com/jiahongc/cc-companion.git
 cd cc-companion
 npm install
 npm start
