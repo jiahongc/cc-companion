@@ -279,7 +279,13 @@ class ClaudeWatcher extends EventEmitter {
     if (sessionInfo?.sessionId && sessionInfo.sessionId !== inst.sessionId) {
       inst.sessionId = sessionInfo.sessionId;
     }
-    const stats = await this._getSessionStats(inst.sessionId, inst.cwd);
+    // Also refresh cwd from session file (more reliable than stale lsof)
+    if (sessionInfo?.cwd) {
+      inst.cwd = sessionInfo.cwd;
+      inst.project = sessionInfo.cwd.split('/').pop();
+    }
+    // Pass both cwds for robust JSONL lookup (same as _initInstance)
+    const stats = await this._getSessionStats(inst.sessionId, inst.cwd, sessionInfo?.cwd);
     if (stats) {
       inst.turnCount = stats.turnCount;
       inst.inputTokens = stats.inputTokens;
@@ -294,7 +300,7 @@ class ClaudeWatcher extends EventEmitter {
 
   emitIfChanged() {
     const snapshot = this.getSnapshot();
-    const key = JSON.stringify(snapshot.instances.map(i => [i.pid, i.active, i.cpu.toFixed(0), i.rss, i.turnCount, i.outputTokens, i.contextTokens, i.model]));
+    const key = JSON.stringify(snapshot.instances.map(i => [i.pid, i.active, i.cpu.toFixed(0), i.rss, i.turnCount, i.outputTokens, i.contextTokens, i.model, i.gitBranch]));
     if (key !== this._lastSnapshotJSON) {
       this._lastSnapshotJSON = key;
       this.emit('instance-update', snapshot);
