@@ -93,16 +93,43 @@ app.whenReady().then(() => {
     compactWin.setPosition(Math.floor((screenW - compactW) / 2), 0);
   });
 
-  // Focus a Claude instance by bringing its terminal app to front
+  // Focus a Claude instance by bringing its terminal/IDE window to front
   ipcMain.handle('focus-instance', async (_, pid) => {
+    const inst = watcher ? watcher.getInstance(pid) : null;
     const appName = (watcher ? watcher.getTerminalApp(pid) : null) || 'Terminal';
+    const project = inst?.project || '';
 
-    // Unminimize all windows, then activate the app to bring it to front.
-    // This handles windows minimized to dock.
+    // Use System Events to:
+    // 1. Set the app as frontmost
+    // 2. Unminimize the matching window if needed
+    // 3. AXRaise the matching window (or first window as fallback)
+    // This works for Cursor, VS Code, Terminal, iTerm2, etc.
     const script = `
-      tell application "${appName}"
-        reopen
-        activate
+      tell application "System Events"
+        if exists process "${appName}" then
+          set frontmost of process "${appName}" to true
+          tell process "${appName}"
+            set allWindows to every window
+            set matched to false
+            repeat with w in allWindows
+              if name of w contains "${project}" then
+                if value of attribute "AXMinimized" of w is true then
+                  set value of attribute "AXMinimized" of w to false
+                end if
+                perform action "AXRaise" of w
+                set matched to true
+                exit repeat
+              end if
+            end repeat
+            if not matched and (count of allWindows) > 0 then
+              set w to item 1 of allWindows
+              if value of attribute "AXMinimized" of w is true then
+                set value of attribute "AXMinimized" of w to false
+              end if
+              perform action "AXRaise" of w
+            end if
+          end tell
+        end if
       end tell
     `;
     return new Promise((resolve) => {

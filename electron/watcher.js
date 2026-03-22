@@ -63,6 +63,22 @@ class ClaudeWatcher extends EventEmitter {
     }
   }
 
+  // Check JSONL mtime to determine if an instance is actively working
+  _isJsonlActive(inst) {
+    if (!inst.sessionId) return false;
+    const cwds = [inst.cwd].filter(Boolean);
+    for (const c of cwds) {
+      const projectKey = toProjectKey(c);
+      const jsonlPath = path.join(PROJECTS_DIR, projectKey, `${inst.sessionId}.jsonl`);
+      try {
+        const stat = fs.statSync(jsonlPath);
+        // If JSONL was modified in the last 5 seconds, Claude is working
+        return (Date.now() - stat.mtimeMs) < 5000;
+      } catch { /* file not found */ }
+    }
+    return false;
+  }
+
   check() {
     exec(
       "ps -eo pid,tty,%cpu,%mem,rss,etime,command | grep -i '^[[:space:]]*[0-9].*claude' | grep -v grep | grep -v cc-companion | grep -v Electron | grep -v '/bin/'",
@@ -96,20 +112,32 @@ class ClaudeWatcher extends EventEmitter {
               existing.etime = etime;
               existing.lastSeen = now;
 
-              const isActive = cpu > 3;
+              // Primary signal: JSONL mtime (immune to typing spikes and sleep)
+              // Secondary signal: sustained CPU > 5% (requires 2+ consecutive high readings)
+              const jsonlActive = this._isJsonlActive(existing);
+              const cpuHigh = cpu > 5;
+              const prevCpuHigh = (existing._prevCpuHigh || false);
+              existing._prevCpuHigh = cpuHigh;
+              const cpuSustained = cpuHigh && prevCpuHigh;
+
+              const isActive = jsonlActive || cpuSustained;
               const wasActive = existing.active;
               existing.active = isActive;
 
               if (isActive && !wasActive) {
-                existing.activeStart = now;
+                // Resuming after a short gap (< 30s, e.g. sleep/wake)? Keep old timer
+                const gap = existing.idleStart ? (now - existing.idleStart) : Infinity;
+                if (!existing.activeStart || gap > 30000) {
+                  existing.activeStart = now;
+                }
                 existing.idleStart = null;
               } else if (!isActive && wasActive) {
                 existing.idleStart = now;
-                existing.activeStart = null;
+                // Don't clear activeStart — preserve it for resume detection
               }
             } else {
               hasNewInstances = true;
-              this._initInstance(pid, tty, cpu, mem, rss, etime, cpu > 3, now);
+              this._initInstance(pid, tty, cpu, mem, rss, etime, false, now);
             }
           }
         }
@@ -139,15 +167,21 @@ class ClaudeWatcher extends EventEmitter {
     // Detect terminal app (async, cached once)
     const terminalApp = await this._detectTerminalApp(pid);
 
+    // Determine initial active state using JSONL mtime
+    const initInst = { sessionId: sessionInfo?.sessionId, cwd: cwd || 'unknown' };
+    const jsonlActive = this._isJsonlActive(initInst);
+    const initiallyActive = jsonlActive || isActive;
+
     this.instances.set(pid, {
       pid, tty, cpu, mem, rss,
-      active: isActive, etime,
+      active: initiallyActive, etime,
       cwd: cwd || 'unknown', project: projectName,
       discoveredAt: now,
-      activeStart: isActive ? now : null,
-      idleStart: isActive ? null : now,
+      activeStart: initiallyActive ? now : null,
+      idleStart: initiallyActive ? null : now,
       lastSeen: now,
       _terminalApp: terminalApp,
+      _prevCpuHigh: cpu > 5,
       // Session metadata
       sessionId: sessionInfo?.sessionId || null,
       startedAt: sessionInfo?.startedAt || null,
@@ -333,7 +367,7 @@ class ClaudeWatcher extends EventEmitter {
     let totalActive = 0;
     for (const [, inst] of this.instances) {
       // Strip private fields from snapshot sent to renderer
-      const { _terminalApp, ...publicInst } = inst;
+      const { _terminalApp, _prevCpuHigh, ...publicInst } = inst;
       instances.push(publicInst);
       if (inst.active) totalActive++;
     }
