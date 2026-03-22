@@ -128,11 +128,16 @@ class ClaudeWatcher extends EventEmitter {
     const { entry, mtimeMs } = result;
 
     // Staleness guard: if the JSONL file hasn't been modified in 2+ minutes,
-    // Claude has stalled or the user walked away — always idle.
-    // (Tool calls and subagents can run for minutes, but they still produce
-    // periodic writes; 2 minutes of silence means nothing is happening.)
+    // Claude may have stalled — but check CPU first. Long-running tool calls
+    // (builds, browser sessions, subagents) can go minutes without JSONL writes
+    // while the process is still actively working.
     const fileAge = Date.now() - mtimeMs;
-    if (fileAge > 120000) return false;
+    if (fileAge > 120000) {
+      // CPU fallback: if the process is using significant CPU, it's still working
+      // even though the JSONL is stale (e.g. long tool execution).
+      if (inst.cpu >= 5) return true;
+      return false;
+    }
 
     // Whitelist approach: only specific entry types mean Claude is actively working.
     // Everything else (system entries, file-history-snapshot, completed responses,
