@@ -129,59 +129,69 @@ class ClaudeWatcher extends EventEmitter {
     if (!result) return (inst.cpu || 0) >= 5;
 
     const { entry, mtimeMs } = result;
-
-    // Staleness guard: if the JSONL file hasn't been modified in 2+ minutes,
-    // Claude may have stalled — but check CPU first. Long-running tool calls
-    // (builds, browser sessions, subagents) can go minutes without JSONL writes
-    // while the process is still actively working.
     const fileAge = Date.now() - mtimeMs;
-    if (fileAge > 120000) {
-      // CPU fallback: if the process is using significant CPU, it's still working
-      // even though the JSONL is stale (e.g. long tool execution).
-      if ((inst.cpu || 0) >= 5) return true;
-      return false;
-    }
+    const cpu = inst.cpu || 0;
 
-    // Whitelist approach: only specific entry types mean Claude is actively working.
-    // Everything else (system entries, file-history-snapshot, completed responses,
-    // unknown types) is treated as idle. This prevents false "working" status
-    // from bookkeeping entries, snapshots, or unrecognized types.
+    // ── Immediately-idle entries (no staleness check needed) ──────────
+    // These entry types always mean Claude is done and waiting for user input.
 
-    // 1. Write in progress — actively writing to JSONL
-    if (entry.type === '_write_in_progress') return true;
-
-    // 2. User message (real prompt or tool result) — Claude is processing
-    if (entry.type === 'user') return true;
-
-    // 3. Assistant response — check stop_reason:
-    //    - tool_use: a tool is executing
-    //    - null/undefined: Claude is mid-stream (still generating)
-    //    - end_turn/max_tokens/stop_sequence: finished (fall through to idle)
+    // assistant with end_turn/max_tokens/stop_sequence = finished responding
     if (entry.type === 'assistant') {
-      const stopReason = entry.message?.stop_reason;
-      if (stopReason === 'tool_use' || stopReason == null) return true;
+      const sr = entry.message?.stop_reason;
+      if (sr === 'end_turn' || sr === 'max_tokens' || sr === 'stop_sequence') return false;
+    }
+    // system entries (turn_duration, compact_boundary, etc.) = bookkeeping after turn ends
+    if (entry.type === 'system') return false;
+    // file-history-snapshot = bookkeeping
+    if (entry.type === 'file-history-snapshot') return false;
+    // last-prompt = session metadata
+    if (entry.type === 'last-prompt') return false;
+
+    // ── Active entries with tiered staleness thresholds ───────────────
+    // Each entry type gets a staleness window tuned to how long that state
+    // can legitimately last without new JSONL writes. Beyond the threshold,
+    // fall through to CPU check as a last resort.
+
+    // Write in progress — actively writing to JSONL (very short-lived)
+    if (entry.type === '_write_in_progress') {
+      return fileAge < 10000 || cpu >= 5;
     }
 
-    // 4. Progress updates from subagents — subagent is running
-    if (entry.type === 'progress') return true;
+    // assistant(null) — mid-stream generation OR user interrupted.
+    // Claude streams continuously, so 10s of silence = interrupted.
+    if (entry.type === 'assistant' && entry.message?.stop_reason == null) {
+      return fileAge < 10000 || cpu >= 5;
+    }
 
-    // 5. Queue operations — task notifications being processed
-    if (entry.type === 'queue-operation') return true;
+    // assistant(tool_use) — a tool was dispatched and is executing.
+    // Tools (builds, browser, subagents) can run for minutes without writes.
+    if (entry.type === 'assistant' && entry.message?.stop_reason === 'tool_use') {
+      return fileAge < 300000 || cpu >= 5;  // 5 min
+    }
 
-    // 6. Result entry — a tool just returned output; Claude is about to process it.
-    //    Only active if the file was very recently modified (within 30s), since
-    //    result entries are immediately followed by Claude processing them.
-    if (entry.type === 'result' && fileAge < 30000) return true;
+    // user message (prompt or tool result) — Claude is processing input.
+    // Should start responding within ~2 min; longer means stalled.
+    if (entry.type === 'user') {
+      return fileAge < 120000 || cpu >= 5;  // 2 min
+    }
 
-    // Everything else is idle:
-    // - assistant with end_turn (finished responding)
-    // - assistant with max_tokens (hit token limit, stopped)
-    // - assistant with stop_sequence (stopped at sequence)
-    // - system (any subtype: turn_duration, init, summary, etc.)
-    // - file-history-snapshot (bookkeeping)
-    // - stale result entries (>30s, tool returned but Claude didn't pick it up)
-    // - unknown/unrecognized entry types
-    return false;
+    // progress — subagent is running, can take minutes.
+    if (entry.type === 'progress') {
+      return fileAge < 300000 || cpu >= 5;  // 5 min
+    }
+
+    // queue-operation — task notification, should be quick.
+    if (entry.type === 'queue-operation') {
+      return fileAge < 30000 || cpu >= 5;  // 30s
+    }
+
+    // result — tool output returned, Claude should pick it up quickly.
+    if (entry.type === 'result') {
+      return fileAge < 30000 || cpu >= 5;  // 30s
+    }
+
+    // Unknown entry type — treat as idle unless CPU says otherwise.
+    return cpu >= 5;
   }
 
   check() {

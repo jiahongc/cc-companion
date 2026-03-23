@@ -154,11 +154,20 @@ ps -eo pid,tty,%cpu,%mem,rss,etime,command | grep -i claude
 ```
 It resolves each process's working directory via `lsof -d cwd` to get the project name.
 
-**Activity detection** uses a multi-signal approach:
+**Activity detection** uses a multi-signal approach with tiered staleness:
 
-1. **JSONL state (primary)** — reads the last entry from Claude's session JSONL to determine ground truth. Active entry types: `user` (processing prompt), `assistant` with `tool_use`/null stop reason (mid-stream or tool executing), `progress` (subagent running), `queue-operation`, `result` (tool just returned, within 30s).
-2. **Staleness guard** — if the JSONL hasn't been modified in 2+ minutes, falls through to the CPU fallback (long-running tools like builds or browser sessions can go minutes without writes).
-3. **CPU fallback** — if CPU >= 5%, the instance is treated as active even when the JSONL is stale or missing (e.g. brand new process still initializing, or long tool execution).
+1. **JSONL state (primary)** — reads the last entry from Claude's session JSONL to determine ground truth. Some entries are immediately idle (`end_turn`, `system`, `file-history-snapshot`). Active entries get entry-type-specific staleness thresholds:
+
+   | Entry | Staleness | Rationale |
+   |-------|-----------|-----------|
+   | `assistant(null)` | 10s | Streaming is continuous; 10s silence = interrupted |
+   | `assistant(tool_use)` | 5 min | Tools (builds, browser) run long without writes |
+   | `progress` | 5 min | Subagents run long without writes |
+   | `user` | 2 min | Claude should start responding within 2 min |
+   | `queue-operation` | 30s | Quick task notifications |
+   | `result` | 30s | Tool output; Claude should pick up quickly |
+
+2. **CPU fallback** — beyond any staleness threshold, if CPU >= 5%, the instance is still treated as active. Also used when no JSONL file exists yet (brand new process).
 
 State transitions (active → idle, idle → active) are timestamped for duration tracking.
 
