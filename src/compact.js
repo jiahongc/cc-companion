@@ -123,7 +123,7 @@ function render() {
   });
 
   const sorted = sortedInstances();
-  list.classList.toggle('scrollable', sorted.length > 4);
+  list.classList.toggle('scrollable', sorted.length > 6);
 
   list.innerHTML = sorted.map(inst => {
     const active = inst.active;
@@ -155,12 +155,15 @@ function render() {
 }
 
 // ── Detail panel ─────────────────────────────────────────────
+let _lastDetailKey = null; // cache key to avoid innerHTML thrashing
+
 function renderDetail() {
   const panel = document.getElementById('detailPanel');
 
   if (!selectedPid || !snapshot) {
     panel.classList.remove('visible');
     panel.innerHTML = '';
+    _lastDetailKey = null;
     return;
   }
 
@@ -169,6 +172,7 @@ function renderDetail() {
     selectedPid = null;
     panel.classList.remove('visible');
     panel.innerHTML = '';
+    _lastDetailKey = null;
     return;
   }
 
@@ -176,6 +180,15 @@ function renderDetail() {
 
   const ctx = ctxInfo(inst);
   const shortCwd = inst.cwd ? inst.cwd.replace(/^\/Users\/[^/]+/, '~') : '—';
+
+  // Build a cache key from all displayed values to avoid re-creating the DOM
+  // (innerHTML destroys the button mid-click when snapshot updates arrive)
+  const detailKey = [inst.pid, inst.project, inst.model, inst.gitBranch,
+    inst.turnCount, ctx.pct.toFixed(0), inst.inputTokens, inst.outputTokens,
+    inst.cacheReadTokens, inst.cpu.toFixed(1), inst.rss, shortCwd].join('|');
+
+  if (detailKey === _lastDetailKey) return;
+  _lastDetailKey = detailKey;
 
   panel.innerHTML = `
     <div class="detail-header">
@@ -333,9 +346,14 @@ document.addEventListener('mouseup', () => {
       el.addEventListener('transitionend', onEnd);
       document.getElementById('compactInstances').classList.remove('reordering');
     } else {
-      // Click — toggle selection
+      // Click — select + immediately focus the instance's terminal
       const pid = tileDrag.pid;
-      selectedPid = selectedPid === pid ? null : pid;
+      if (selectedPid === pid) {
+        selectedPid = null;
+      } else {
+        selectedPid = pid;
+        if (window.api) window.api.focusInstance(pid);
+      }
       render();
     }
     tileDrag = null;
