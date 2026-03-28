@@ -49,13 +49,18 @@ CC Companion sits alongside your workflow, tracking every Claude Code instance r
 - Pause, resume, and restart controls
 
 ### Dynamic Island Controls
-- **Runtime toggle** — show/hide the working timer on instance tiles (persisted across sessions)
-- **Theme toggle** — switch between light and dark mode
+- **Settings panel** — gear button opens a floating popup with all settings:
+  - **Theme** — toggle between Dark and Light mode
+  - **Show Work Timer** — display elapsed working time on active instance tiles
+  - **Show Ready Timer** — display elapsed idle time on ready instance tiles
+  - **Opacity** — background transparency (Light 80% / Mid 90% / Full 100%) — only affects background, not text
+- **Info button** — `ⓘ` on each tile opens a detail stats panel (start time, elapsed, model, tokens, context, etc.)
 - **Center window** — snap the island to center-top of screen
 - **Tooltips** — hover any button to see its function (theme-aware styling)
+- All settings persist in localStorage across app restarts
 
 ### Dark Mode
-- Full dark mode toggle via bottom bar button and Dynamic Island
+- Full dark/light mode toggle via settings panel and bottom bar button
 - Custom dark theme for all components including feed cards and instance rows
 
 ## Download
