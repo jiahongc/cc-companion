@@ -244,18 +244,7 @@ class ClaudeWatcher extends EventEmitter {
               // Quick session-file check: detect /clear or session change within 2s
               const sessionInfo = this._readSessionFile(pid);
               if (sessionInfo?.sessionId && sessionInfo.sessionId !== existing.sessionId) {
-                // Session changed (/clear or new session) — zero stats immediately
-                existing.sessionId = sessionInfo.sessionId;
-                existing.startedAt = sessionInfo.startedAt || null;
-                existing.turnCount = 0;
-                existing.inputTokens = 0;
-                existing.outputTokens = 0;
-                existing.cacheReadTokens = 0;
-                existing.cacheCreateTokens = 0;
-                existing.contextTokens = 0;
-                existing.model = null;
-                existing.gitBranch = null;
-                existing._lastActiveTurn = 0;
+                this._resetSessionStats(existing, sessionInfo);
               }
               if (sessionInfo?.cwd) {
                 existing._sessionCwd = sessionInfo.cwd;
@@ -304,7 +293,7 @@ class ClaudeWatcher extends EventEmitter {
             } else if (!this._initializingPids.has(pid)) {
               hasNewInstances = true;
               this._initializingPids.add(pid);
-              this._initInstance(pid, tty, cpu, mem, rss, etime, false, now);
+              this._initInstance(pid, tty, cpu, mem, rss, etime, now);
             }
           }
 
@@ -323,7 +312,7 @@ class ClaudeWatcher extends EventEmitter {
     );
   }
 
-  async _initInstance(pid, tty, cpu, mem, rss, etime, isActive, now) {
+  async _initInstance(pid, tty, cpu, mem, rss, etime, now) {
     try {
     const cwd = await this.getCwd(pid);
     const projectName = cwd ? cwd.split('/').pop() : `session-${pid}`;
@@ -367,6 +356,21 @@ class ClaudeWatcher extends EventEmitter {
     } finally {
       this._initializingPids.delete(pid);
     }
+  }
+
+  // Zero out session stats when session changes (/clear or new session)
+  _resetSessionStats(inst, sessionInfo) {
+    inst.sessionId = sessionInfo.sessionId;
+    inst.startedAt = sessionInfo.startedAt || null;
+    inst.turnCount = 0;
+    inst.inputTokens = 0;
+    inst.outputTokens = 0;
+    inst.cacheReadTokens = 0;
+    inst.cacheCreateTokens = 0;
+    inst.contextTokens = 0;
+    inst.model = null;
+    inst.gitBranch = null;
+    inst._lastActiveTurn = 0;
   }
 
   // Read ~/.claude/sessions/{pid}.json for session metadata
@@ -482,18 +486,7 @@ class ClaudeWatcher extends EventEmitter {
     // Re-read session file to detect /clear (new sessionId, same pid)
     const sessionInfo = this._readSessionFile(pid);
     if (sessionInfo?.sessionId && sessionInfo.sessionId !== inst.sessionId) {
-      // Session changed — zero out stats immediately so stale data doesn't linger
-      inst.sessionId = sessionInfo.sessionId;
-      inst.startedAt = sessionInfo.startedAt || null;
-      inst.turnCount = 0;
-      inst.inputTokens = 0;
-      inst.outputTokens = 0;
-      inst.cacheReadTokens = 0;
-      inst.cacheCreateTokens = 0;
-      inst.contextTokens = 0;
-      inst.model = null;
-      inst.gitBranch = null;
-      inst._lastActiveTurn = 0;
+      this._resetSessionStats(inst, sessionInfo);
     }
     // Also refresh cwd from session file (more reliable than stale lsof)
     if (sessionInfo?.cwd) {
@@ -517,7 +510,7 @@ class ClaudeWatcher extends EventEmitter {
 
   emitIfChanged() {
     const snapshot = this.getSnapshot();
-    const key = JSON.stringify(snapshot.instances.map(i => [i.pid, i.active, i.cpu.toFixed(0), i.rss, i.turnCount, i.outputTokens, i.contextTokens, i.model, i.gitBranch, i.activeStart]));
+    const key = JSON.stringify(snapshot.instances.map(i => [i.pid, i.active, i.cpu.toFixed(0), i.rss, i.turnCount, i.outputTokens, i.contextTokens, i.model, i.gitBranch, i.activeStart, i.startedAt, i.idleStart]));
     if (key !== this._lastSnapshotJSON) {
       this._lastSnapshotJSON = key;
       this.emit('instance-update', snapshot);
