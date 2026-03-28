@@ -169,6 +169,14 @@ npm run build:mac
 
 Output goes to the `dist/` folder.
 
+## Security & Privacy
+
+- **Local only** — CC Companion runs entirely on your machine. No data is sent to any server, no network requests are made, no telemetry or analytics.
+- **Read-only** — The app only reads Claude Code's session files (`~/.claude/sessions/`, `~/.claude/projects/`). It never writes to them or modifies your Claude sessions in any way.
+- **No secrets** — The app does not access, store, or transmit API keys, tokens, or credentials. It reads process metadata (`ps`) and session JSONL files, which contain conversation structure but not your API keys.
+- **Process isolation** — Electron runs with `contextIsolation: true` and `nodeIntegration: false`. The renderer communicates with the main process only through a restricted preload API.
+- **Unsigned binary** — The DMG is not signed with an Apple Developer certificate. macOS Gatekeeper will block it on first launch — right-click > Open > Open to bypass. You can also build from source to verify the code yourself.
+
 ## Contributing
 
 1. Fork this repo
