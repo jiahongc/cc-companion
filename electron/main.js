@@ -32,7 +32,6 @@ function createCompactWindow() {
 
   compactWin.loadFile(path.join(__dirname, '..', 'src', 'compact.html'));
   compactWin.setVisibleOnAllWorkspaces(true);
-
   return compactWin;
 }
 

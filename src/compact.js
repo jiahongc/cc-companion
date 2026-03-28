@@ -5,6 +5,7 @@ let lastCompactHeight = 0;
 let selectedPid = null;
 let pidOrder = []; // user-defined tile order, new instances prepended
 let showRuntime = localStorage.getItem('showRuntime') === 'true'; // default off
+let showIdleTime = localStorage.getItem('showIdleTime') === 'true'; // default off
 
 // ── Helpers ──────────────────────────────────────────────────
 function formatTime(s) {
@@ -123,6 +124,23 @@ function sortedInstances() {
   return [...instances].sort((a, b) => (orderMap.get(a.pid) ?? 0) - (orderMap.get(b.pid) ?? 0));
 }
 
+function resizeWindow() {
+  requestAnimationFrame(() => {
+    const bar = document.getElementById('compactBar');
+    if (!bar || !window.api) return;
+    let h = bar.offsetHeight + 4;
+    // Account for absolute-positioned settings panel
+    const panel = document.getElementById('settingsPanel');
+    if (panel && panel.classList.contains('visible')) {
+      h = Math.max(h, panel.offsetTop + panel.offsetHeight + 10);
+    }
+    if (h !== lastCompactHeight) {
+      lastCompactHeight = h;
+      window.api.resizeCompact(h);
+    }
+  });
+}
+
 // ── Render ───────────────────────────────────────────────────
 function render() {
   const summary = document.getElementById('compactSummary');
@@ -146,16 +164,7 @@ function render() {
   icon.classList.toggle('active', working > 0);
 
   // Auto-resize compact window to fit content
-  requestAnimationFrame(() => {
-    const bar = document.getElementById('compactBar');
-    if (bar && window.api) {
-      const h = bar.offsetHeight + 4;
-      if (h !== lastCompactHeight) {
-        lastCompactHeight = h;
-        window.api.resizeCompact(h);
-      }
-    }
-  });
+  resizeWindow();
 
   const sorted = sortedInstances();
   list.classList.toggle('scrollable', sorted.length > 6);
@@ -179,9 +188,12 @@ function render() {
         <div class="ci-project">${inst.project}</div>
       </div>
       <div class="ci-bottom">
-        <span class="ci-label">${active ? (showRuntime && durText ? durText : 'working') : 'ready'}</span>
+        <span class="ci-label">${active
+          ? (showRuntime && durText ? durText : 'working')
+          : (showIdleTime && inst.idleStart ? formatTime(Math.floor((Date.now() - inst.idleStart) / 1000)) : 'ready')}</span>
         <span class="ci-model">${shortModelName(inst.model)}</span>
         ${ctxHtml}
+        <button class="ci-info-btn no-drag" data-info-pid="${inst.pid}">ⓘ</button>
       </div>
     </div>`;
   }).join('');
@@ -247,7 +259,6 @@ function renderDetail() {
       <div class="detail-row"><span class="detail-key">cpu / mem</span><span class="detail-val">${inst.cpu.toFixed(1)}% / ${formatMem(inst.rss)}</span></div>
     </div>
     <div class="detail-path" title="${inst.cwd}">${shortCwd}</div>
-    <button class="detail-focus-btn no-drag" id="detailFocusBtn">Open instance</button>
   `;
 }
 
@@ -387,15 +398,9 @@ document.addEventListener('mouseup', () => {
       el.addEventListener('transitionend', onEnd);
       document.getElementById('compactInstances').classList.remove('reordering');
     } else {
-      // Click — select + immediately focus the instance's terminal
+      // Click — focus the instance's terminal
       const pid = tileDrag.pid;
-      if (selectedPid === pid) {
-        selectedPid = null;
-      } else {
-        selectedPid = pid;
-        if (window.api) window.api.focusInstance(pid);
-      }
-      render();
+      if (window.api) window.api.focusInstance(pid);
     }
     tileDrag = null;
     return;
@@ -405,15 +410,19 @@ document.addEventListener('mouseup', () => {
 
 // ── Event delegation for detail buttons ──────────────────────
 document.addEventListener('click', (e) => {
+  // Info button on tile — toggle detail panel
+  const infoBtn = e.target.closest('[data-info-pid]');
+  if (infoBtn) {
+    e.stopPropagation();
+    const pid = parseInt(infoBtn.dataset.infoPid);
+    selectedPid = selectedPid === pid ? null : pid;
+    render();
+    return;
+  }
   if (e.target.closest('#detailClose')) {
     e.stopPropagation();
     selectedPid = null;
     render();
-    return;
-  }
-  if (e.target.closest('#detailFocusBtn')) {
-    e.stopPropagation();
-    if (window.api && selectedPid) window.api.focusInstance(selectedPid);
     return;
   }
 });
@@ -422,37 +431,84 @@ document.addEventListener('click', (e) => {
 let windowDrag = false;
 let windowDragX = 0, windowDragY = 0;
 
-// ── Theme persistence (default to light) ──────────────────────
-if (localStorage.getItem('theme') !== 'dark') {
+// ── Settings persistence ──────────────────────────────────────
+const savedTheme = localStorage.getItem('theme') || 'light';
+const savedOpacity = parseFloat(localStorage.getItem('opacity') || '1');
+
+if (savedTheme !== 'dark') {
   document.getElementById('compactBar').classList.add('light');
-  document.getElementById('themeBtn').textContent = '☾';
+}
+applyOpacity(savedOpacity);
+
+function applyOpacity(val) {
+  const bar = document.getElementById('compactBar');
+  const isLight = bar.classList.contains('light');
+  if (isLight) {
+    bar.style.setProperty('--bar-bg', `rgba(255, 250, 245, ${val})`);
+  } else {
+    bar.style.setProperty('--bar-bg', `rgba(22, 18, 16, ${val})`);
+  }
 }
 
-// ── Runtime toggle persistence ────────────────────────────────
-if (!showRuntime) {
-  document.getElementById('timerBtn').classList.add('toggled-off');
+// Mark active setting buttons on load
+function markActive(groupId, val) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.stoggle-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(val));
+  });
 }
-document.querySelector('#timerBtn .tooltip').textContent = showRuntime ? 'Hide runtime' : 'Show runtime';
+markActive('settingTheme', savedTheme);
+markActive('settingRuntime', showRuntime ? 'on' : 'off');
+markActive('settingIdleTime', showIdleTime ? 'on' : 'off');
+markActive('settingOpacity', savedOpacity);
+
+// ── Settings panel toggle ─────────────────────────────────────
+document.getElementById('settingsBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('settingsPanel').classList.toggle('visible');
+  resizeWindow();
+});
+// Close settings when clicking outside
+document.addEventListener('mousedown', (e) => {
+  const panel = document.getElementById('settingsPanel');
+  if (panel.classList.contains('visible') && !e.target.closest('#settingsPanel') && !e.target.closest('#settingsBtn')) {
+    panel.classList.remove('visible');
+    resizeWindow();
+  }
+});
+
+// ── Settings handlers (event delegation) ──────────────────────
+document.getElementById('settingsPanel').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const opt = e.target.closest('.stoggle-opt');
+  if (!opt) return;
+
+  const group = opt.closest('.settings-toggle');
+  group.querySelectorAll('.stoggle-opt').forEach(b => b.classList.remove('active'));
+  opt.classList.add('active');
+
+  const val = opt.dataset.val;
+  const bar = document.getElementById('compactBar');
+
+  if (group.id === 'settingTheme') {
+    bar.classList.toggle('light', val === 'light');
+    localStorage.setItem('theme', val);
+    applyOpacity(parseFloat(localStorage.getItem('opacity') || '1'));
+  } else if (group.id === 'settingRuntime') {
+    showRuntime = val === 'on';
+    localStorage.setItem('showRuntime', showRuntime);
+    render();
+  } else if (group.id === 'settingIdleTime') {
+    showIdleTime = val === 'on';
+    localStorage.setItem('showIdleTime', showIdleTime);
+    render();
+  } else if (group.id === 'settingOpacity') {
+    applyOpacity(parseFloat(val));
+    localStorage.setItem('opacity', val);
+  }
+});
 
 // ── Header buttons ───────────────────────────────────────────
-document.getElementById('timerBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  showRuntime = !showRuntime;
-  localStorage.setItem('showRuntime', showRuntime);
-  const btn = document.getElementById('timerBtn');
-  btn.classList.toggle('toggled-off', !showRuntime);
-  btn.querySelector('.tooltip').textContent = showRuntime ? 'Hide runtime' : 'Show runtime';
-  render();
-});
-document.getElementById('themeBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  const bar = document.getElementById('compactBar');
-  const btn = document.getElementById('themeBtn');
-  bar.classList.toggle('light');
-  const isLight = bar.classList.contains('light');
-  btn.textContent = isLight ? '☾' : '☀';
-  localStorage.setItem('theme', isLight ? 'light' : 'dark');
-});
 document.getElementById('snapBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   if (window.api) window.api.snapCompactWindow();

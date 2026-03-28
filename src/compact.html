@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CC Companion — Compact</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="compact.css">
+<link rel="stylesheet" href="compact.css?v=3">
 </head>
 <body>
 <div class="compact-bar" id="compactBar">
@@ -29,11 +29,41 @@
       <div class="compact-summary" id="compactSummary">no instances</div>
     </div>
     <div class="header-buttons no-drag" id="headerButtons">
-      <button class="snap-btn no-drag has-tooltip toggled-off" id="timerBtn"><span class="tooltip">Show runtime</span>⏱</button>
-      <button class="snap-btn no-drag has-tooltip" id="themeBtn"><span class="tooltip">Toggle theme</span>☀</button>
+      <button class="snap-btn no-drag has-tooltip" id="settingsBtn"><span class="tooltip">Settings</span>⚙</button>
       <button class="snap-btn no-drag has-tooltip" id="snapBtn"><span class="tooltip">Center window</span>⊙</button>
       <button class="snap-btn no-drag has-tooltip" id="minimizeBtn"><span class="tooltip">Minimize</span>−</button>
       <button class="snap-btn no-drag has-tooltip" id="closeBtn"><span class="tooltip">Quit</span>✕</button>
+    </div>
+  </div>
+  <div class="settings-panel no-drag" id="settingsPanel">
+    <div class="settings-row">
+      <span class="settings-label">Theme</span>
+      <div class="settings-toggle" id="settingTheme">
+        <button class="stoggle-opt" data-val="dark">Dark</button>
+        <button class="stoggle-opt active" data-val="light">Light</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">Show Work Timer</span>
+      <div class="settings-toggle" id="settingRuntime">
+        <button class="stoggle-opt active" data-val="off">Off</button>
+        <button class="stoggle-opt" data-val="on">On</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">Show Ready Timer</span>
+      <div class="settings-toggle" id="settingIdleTime">
+        <button class="stoggle-opt active" data-val="off">Off</button>
+        <button class="stoggle-opt" data-val="on">On</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">Opacity</span>
+      <div class="settings-toggle" id="settingOpacity">
+        <button class="stoggle-opt" data-val="0.8">Light</button>
+        <button class="stoggle-opt" data-val="0.9">Mid</button>
+        <button class="stoggle-opt active" data-val="1">Full</button>
+      </div>
     </div>
   </div>
   <div class="detail-panel no-drag" id="detailPanel"></div>

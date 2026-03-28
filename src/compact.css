@@ -1,5 +1,5 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { background: transparent; overflow: hidden; user-select: none; }
+html, body { background: transparent; overflow: visible; user-select: none; }
 
 /* ── Theme variables ──────────────────────────────────────── */
 .compact-bar {
@@ -46,6 +46,7 @@ html, body { background: transparent; overflow: hidden; user-select: none; }
 }
 
 .compact-bar {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 440px;
@@ -55,6 +56,7 @@ html, body { background: transparent; overflow: hidden; user-select: none; }
   gap: 6px;
   cursor: grab;
   transition: background 0.3s;
+  overflow: visible;
 }
 .compact-bar:active { cursor: grabbing; }
 
@@ -132,8 +134,65 @@ html, body { background: transparent; overflow: hidden; user-select: none; }
   border-color: var(--border-hover);
   background: var(--hover-bg);
 }
-.snap-btn.toggled-off {
-  opacity: 0.4;
+/* Settings panel — floating popup */
+.settings-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  position: absolute;
+  top: 42px;
+  right: 14px;
+  z-index: 50;
+  background: var(--bar-bg);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  backdrop-filter: blur(12px);
+  min-width: 200px;
+}
+.settings-panel.visible {
+  display: flex;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.settings-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 52px;
+}
+.settings-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--btn-bg);
+  border-radius: 5px;
+  padding: 2px;
+}
+.stoggle-opt {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+.stoggle-opt:hover {
+  color: var(--text-secondary);
+}
+.stoggle-opt.active {
+  background: var(--btn-bg-hover);
+  color: var(--text-primary);
 }
 
 /* Tooltips */
@@ -265,6 +324,29 @@ html, body { background: transparent; overflow: hidden; user-select: none; }
 @keyframes ci-bounce {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-2px); }
+}
+
+/* Info button on tile bottom row */
+.ci-info-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+}
+.ci-info-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
 }
 
 .ci-project {
@@ -409,21 +491,4 @@ html, body { background: transparent; overflow: hidden; user-select: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 2px;
-}
-.detail-focus-btn {
-  margin-top: 4px;
-  background: var(--btn-bg);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 4px 0;
-  cursor: pointer;
-  text-align: center;
-  transition: background 0.15s;
-}
-.detail-focus-btn:hover {
-  background: var(--btn-bg-hover);
 }
