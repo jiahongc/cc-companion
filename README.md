@@ -70,19 +70,9 @@ Click the `ⓘ` button on any tile to view detailed stats:
 - **Quit** (✕) — exit the app
 - **Tooltips** — hover any button to see its function
 
-## Download
+## Getting Started
 
-Grab the latest DMG from the [Releases](https://github.com/jiahongc/cc-companion/releases) page.
-
-Open the `.dmg`, drag CC Companion to Applications, and launch.
-
-> **Note:** The app is unsigned. macOS may show "CC Companion is damaged and can't be opened." This is a false alarm — it's just Gatekeeper blocking unsigned apps. After dragging to Applications, run:
-> ```
-> xattr -cr /Applications/CC\ Companion.app
-> ```
-> Then open it normally.
-
-## Run from Source
+### Run from source (recommended)
 
 ```bash
 git clone https://github.com/jiahongc/cc-companion.git
@@ -92,6 +82,14 @@ npm start
 ```
 
 Requires [Node.js](https://nodejs.org/) v18+.
+
+### DMG download
+
+A pre-built DMG is available on the [Releases](https://github.com/jiahongc/cc-companion/releases) page. Since the app is unsigned, macOS will block it on first launch. After dragging to Applications, run:
+
+```
+xattr -cr /Applications/CC\ Companion.app
+```
 
 ## Project Structure
 
@@ -179,7 +177,7 @@ Output goes to the `dist/` folder.
 - **Read-only** — The app only reads Claude Code's session files (`~/.claude/sessions/`, `~/.claude/projects/`). It never writes to them or modifies your Claude sessions in any way.
 - **No secrets** — The app does not access, store, or transmit API keys, tokens, or credentials. It reads process metadata (`ps`) and session JSONL files, which contain conversation structure but not your API keys.
 - **Process isolation** — Electron runs with `contextIsolation: true` and `nodeIntegration: false`. The renderer communicates with the main process only through a restricted preload API.
-- **Unsigned binary** — The DMG is not signed with an Apple Developer certificate. macOS will show a "damaged" error on first launch — run `xattr -cr /Applications/CC\ Companion.app` to clear the quarantine flag. You can also build from source to verify the code yourself.
+- **Open source** — Run from source so you can verify the code yourself before running it.
 
 ## Contributing
 
