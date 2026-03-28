@@ -1,67 +1,43 @@
 # CC Companion
 
-A desktop companion app that monitors your Claude Code sessions and serves you curated content while you wait. Built with Electron.
+A desktop companion app that monitors your Claude Code sessions in real time. Built with Electron.
 
-CC Companion sits alongside your workflow, tracking every Claude Code instance running on your machine — which project it's in, whether it's actively working or idle, CPU and memory usage, token consumption, conversation turns, and how long it's been in each state. When you have a moment between tasks, it serves up a randomized feed of Reddit posts and Substack articles, vocabulary building, or guided break exercises.
+CC Companion is a Dynamic Island-style always-on-top bar that sits at the top of your screen, tracking every Claude Code instance running on your machine — which project it's in, whether it's actively working or idle, CPU and memory usage, token consumption, conversation turns, and how long it's been in each state.
 
 ## Features
 
 ### Claude Code Instance Tracking
-- Auto-detects all running Claude Code processes (case-insensitive matching, filters out Claude desktop app)
-- Per-instance stats: project name, git branch, PID, CPU%, memory, uptime, working/idle duration
+- Auto-detects all running Claude Code processes (filters out Claude desktop app and subagent processes)
+- Per-instance tile showing project name, model, status, and context usage
 - **Session analytics**: turn count, input/output token usage, context usage, model name — read directly from Claude's session files
 - **Session timing**: start time (with date if not today) and total elapsed time shown in detail panel
-- Live working timer that ticks every second, with toggle to show/hide runtime
 - **Anti-flicker**: 3-second idle grace period prevents flickering between working/ready during brief pauses between tool calls
 - **Smart timer reset**: timer resets when a new user turn starts, so quick back-and-forth exchanges get fresh timers
-- Click any instance to focus its terminal window in Cursor
+- Click any instance tile to focus its terminal window
+- Drag tiles to reorder them
 
-### Three Tabs
-- **Random** — curated content feed from Reddit and Substack
-- **Vocab** — vocabulary builder with pronunciation, definitions, examples, synonyms, and audio playback
-- **Break** — guided break timer with five exercise types
+### Settings Panel
+Gear button opens a floating popup with all settings (persisted across restarts):
+- **Theme** — toggle between Dark and Light mode
+- **Show Work Timer** — display elapsed working time on active instance tiles
+- **Show Ready Timer** — display elapsed idle time on ready instance tiles
+- **Opacity** — background transparency (Light 80% / Mid 90% / Full 100%) — only affects background, not text
 
-### Three View Modes
-- **Full Mode** — feed + instance stats + break timer
-- **Compact Mode** — stats only, window shrinks to fit just the instance panel
-- **Dynamic Island** — a small always-on-top pill bar at the top of your screen showing instance status
+### Instance Detail
+Click the `ⓘ` button on any tile to view detailed stats:
+- Session start time and total elapsed
+- Model and git branch
+- Context usage percentage
+- Input/output/cached token counts
+- CPU and memory usage
+- Working directory path
 
-### Curated Content Feed
-- **Reddit** — posts filtered to 100+ upvotes across 15 categories
-- **Substack** — articles with rich previews (title + 500 char body preview) from 70+ newsletters
-- **Source filter** — toggle between Substack only, Reddit only, or both
-- **Categories** — Comedy, Tech & Dev, Investing & Personal Finance, Science & Learning, Design & Creative, AI & Machine Learning, Startups & Product, News & World, Business & Economics, Gaming, Self-Help & Growth, Visual & Cozy, Productivity & Thinking, Health & Wellness, Crypto & Web3
-- **Custom sources** — add your own subreddits or Substack/RSS feeds
-- Inline video playback for Reddit video posts
-- Every post shows its category, source, score, comment count, and relative time
-
-### Vocabulary Builder
-- 1,700+ curated GRE/SAT-level words loaded from a bundled JSON file
-- Definitions fetched from the Free Dictionary API (no API key needed)
-- Phonetic pronunciation with audio playback
-- Definitions grouped by part of speech with example sentences
-- Synonyms and antonyms displayed as colored pills
-- Fixed "next word" button that doesn't move with content
-
-### Break Timer
-- Five break types: Neck Roll, Wrist Stretch, 20-20-20 Eyes, Stand & Stretch, Box Breathing
-- Countdown timer with visual feedback
-- Pause, resume, and restart controls
-
-### Dynamic Island Controls
-- **Settings panel** — gear button opens a floating popup with all settings:
-  - **Theme** — toggle between Dark and Light mode
-  - **Show Work Timer** — display elapsed working time on active instance tiles
-  - **Show Ready Timer** — display elapsed idle time on ready instance tiles
-  - **Opacity** — background transparency (Light 80% / Mid 90% / Full 100%) — only affects background, not text
-- **Info button** — `ⓘ` on each tile opens a detail stats panel (start time, elapsed, model, tokens, context, etc.)
-- **Center window** — snap the island to center-top of screen
-- **Tooltips** — hover any button to see its function (theme-aware styling)
-- All settings persist in localStorage across app restarts
-
-### Dark Mode
-- Full dark/light mode toggle via settings panel and bottom bar button
-- Custom dark theme for all components including feed cards and instance rows
+### Controls
+- **Settings** (⚙) — open settings panel
+- **Center** (⊙) — snap the island to center-top of screen
+- **Minimize** (−) — hide to dock
+- **Quit** (✕) — exit the app
+- **Tooltips** — hover any button to see its function
 
 ## Download
 
@@ -78,8 +54,6 @@ Open the `.dmg`, drag CC Companion to your Applications folder, and launch it. T
 
 ## Run from Source
 
-If you prefer to run from source or want to contribute:
-
 ```bash
 git clone https://github.com/jiahongc/cc-companion.git
 cd cc-companion
@@ -89,51 +63,6 @@ npm start
 
 Requires [Node.js](https://nodejs.org/) v18+.
 
-## Usage
-
-### Instance Monitoring
-The status bar at the top shows a summary like "3 total · 1 working". Click it to expand the instance dropdown (open by default). Each row shows:
-
-```
-● cc-companion · main                         02:14    WORKING
-  PID 1494 · up 30:48 · CPU 14.5% · 586 MB
-  8 turns  ↑1.1M  ↓5.2k  opus-4-6
-
-○ march-madness · main            idle 05:23    IDLE
-  PID 89759 · up 01:05:58 · CPU 0.7% · 883 MB
-  27 turns  ↑3.4M  ↓12.1k  opus-4-6
-```
-
-- **Turns** = number of user prompts (one prompt + all its tool calls/responses = 1 turn)
-- **↑** = total input tokens (including cache reads/writes)
-- **↓** = total output tokens
-- **Model** = which Claude model the session is using
-
-Click any instance row to bring its Cursor terminal window into focus.
-
-### Content Feed
-The Random tab shows a mixed feed from your selected categories. Use the controls at the top:
-
-- **edit** — opens the category selector with source filter (Both / Substack / Reddit)
-- **shuffle** — clears cache and loads fresh content
-- **→** arrow on any category — preview its content before selecting
-
-Reddit posts with fewer than 100 upvotes are filtered out. Substack articles older than 90 days are excluded.
-
-### Vocabulary
-The Vocab tab shows a word card with pronunciation, definitions, example sentences, and synonyms. Hit "next word" (pinned at the bottom) or shuffle for a new word.
-
-### View Modes
-Use the buttons in the bottom bar:
-
-- **Compact** — shrinks the window to just show instance stats (no feed)
-- **Island** — switches to a Dynamic Island-style bar at the top of your screen (always-on-top, visible across all apps)
-
-Click the Dynamic Island bar to return to the full window.
-
-### Break Timer
-Switch to the Break tab, pick a break type, and hit "start timer". The countdown runs with a visual ring.
-
 ## Project Structure
 
 ```
@@ -141,28 +70,24 @@ cc-companion/
 ├── electron/
 │   ├── main.js          # Electron main process, IPC handlers, window management
 │   ├── preload.js       # Context bridge API for renderer
-│   ├── tray.js          # System tray icon and menu
 │   └── watcher.js       # Claude Code process detection, session analytics
 ├── src/
-│   ├── index.html       # Main window
-│   ├── styles.css       # All styles (light + dark mode)
-│   ├── app.js           # Main renderer logic, feed fetching, vocab, UI
-│   ├── vocab-words.json # 1,700+ curated vocabulary words
 │   ├── compact.html     # Dynamic Island window
 │   ├── compact.css      # Dynamic Island styles
 │   └── compact.js       # Dynamic Island renderer
+├── test/
+│   └── watcher.test.js  # 61 tests covering detection, state, tokens, formatting
 ├── assets/
 │   ├── icon_1024.png    # App icon (1024x1024 source)
 │   ├── icon.icns        # macOS app icon
-│   ├── iconTemplate.png # Tray icon
-│   └── gen_icon.py      # Icon generation script
+│   └── iconTemplate.png # Tray icon
 └── package.json
 ```
 
 ## How It Works
 
 ### Process Detection
-The watcher polls `ps` every 2 seconds to find Claude CLI processes (case-insensitive), filtering out the Claude desktop app, helper processes, and Electron/system binaries. It resolves each process's working directory via `lsof -d cwd` to get the project name. Async instance initialization is guarded against duplicate creation during the discovery window.
+The watcher polls `ps` every 2 seconds to find Claude CLI processes (case-insensitive), filtering out the Claude desktop app, helper processes, subagent child processes, and Electron/system binaries. It resolves each process's working directory via `lsof -d cwd` to get the project name. Async instance initialization is guarded against duplicate creation during the discovery window.
 
 **Activity detection** uses a multi-signal approach with tiered staleness:
 
@@ -193,41 +118,30 @@ For each detected instance, the watcher reads:
 From the JSONL it extracts:
 - **Turn count** — real user prompts (excludes tool-use results)
 - **Token usage** — input, output, cache read, cache creation tokens
+- **Context tokens** — current context window fill (input + cache read + cache creation from last entry)
 - **Model** — which Claude model is active
 - **Git branch** — current branch name
 
 Stats refresh every 5 seconds. Only emits updates when data actually changes (deduplicated via snapshot key).
 
-### Feed Sources
-- **Reddit**: JSON API (`/r/{subreddit}/hot.json`) with User-Agent header. No auth required.
-- **Substack**: RSS feeds with `content:encoded` parsing for rich previews. HTML is stripped to plain text.
+## Testing
 
-All feeds are cached for 5 minutes to avoid hammering APIs.
+```bash
+npm test          # run all 61 tests
+npm run test:watch  # watch mode
+```
 
-### Vocabulary
-- Word list: 1,700+ curated words bundled in `vocab-words.json`
-- Definitions: Free Dictionary API (`dictionaryapi.dev`) — no API key needed
-- Returns phonetics, audio pronunciation, definitions, examples, synonyms, antonyms
+Tests cover activity detection, state transitions, idle grace period, timer resets, session reset on /clear, model switching, token counting, snapshot deduplication, duplicate prevention, and formatting helpers.
 
 ## Build from Source
 
 To package as a standalone `.dmg`:
 
 ```bash
-# macOS
 npm run build:mac
-
-# All platforms
-npm run build
 ```
 
-Output goes to the `dist/` folder. The macOS build produces both a `.dmg` installer and a `.zip` archive.
-
-## Configuration
-
-Edit the `CONTENT_CATEGORIES` object in `src/app.js` to add or remove subreddits, Substack feeds, and categories.
-
-Default categories on first launch: Comedy, Tech & Dev, Science & Learning.
+Output goes to the `dist/` folder.
 
 ## Contributing
 
