@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('api', {
   snapCompactWindow: () => ipcRenderer.send('snap-compact-window'),
   resizeCompact: (height) => ipcRenderer.send('resize-compact', { height }),
   focusInstance: (pid) => ipcRenderer.invoke('focus-instance', pid),
+  killInstance: (pid) => ipcRenderer.invoke('kill-instance', pid),
 });

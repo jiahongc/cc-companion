@@ -136,6 +136,11 @@ function resizeWindow() {
     if (panel && panel.classList.contains('visible')) {
       h = Math.max(h, panel.offsetTop + panel.offsetHeight + 10);
     }
+    // Account for context menu
+    const ctx = document.querySelector('.context-menu');
+    if (ctx) {
+      h = Math.max(h, ctx.offsetTop + ctx.offsetHeight + 10);
+    }
     if (h !== lastCompactHeight) {
       lastCompactHeight = h;
       window.api.resizeCompact(h);
@@ -451,13 +456,23 @@ document.addEventListener('contextmenu', (e) => {
 
   contextMenu = document.createElement('div');
   contextMenu.className = 'context-menu no-drag';
-  contextMenu.innerHTML = '<div class="context-item" data-action="rename">Rename</div><div class="context-item" data-action="reset-name">Reset name</div>';
+  contextMenu.innerHTML = `
+    <div class="context-item" data-action="rename">Rename</div>
+    <div class="context-item" data-action="reset-name">Reset name</div>
+    <div class="context-divider"></div>
+    <div class="context-item danger" data-action="close">Close instance</div>
+  `;
   contextMenu.style.left = e.clientX + 'px';
   contextMenu.style.top = e.clientY + 'px';
   document.body.appendChild(contextMenu);
 
+  // Resize window to fit context menu
+  resizeWindow();
+
   contextMenu.addEventListener('click', (ce) => {
-    const action = ce.target.dataset.action;
+    const item = ce.target.closest('.context-item');
+    if (!item) return;
+    const action = item.dataset.action;
     if (action === 'rename') {
       removeContextMenu();
       startRename(tile, pid);
@@ -465,6 +480,18 @@ document.addEventListener('contextmenu', (e) => {
       delete customNames[pid];
       removeContextMenu();
       render();
+    } else if (action === 'close') {
+      // Replace menu with confirmation
+      contextMenu.innerHTML = `
+        <div class="context-confirm">Close this instance?</div>
+        <div class="context-item danger" data-action="confirm-close">Yes, close</div>
+        <div class="context-item" data-action="cancel">Cancel</div>
+      `;
+    } else if (action === 'confirm-close') {
+      if (window.api) window.api.killInstance(parseInt(pid));
+      removeContextMenu();
+    } else if (action === 'cancel') {
+      removeContextMenu();
     }
   });
 });
@@ -473,6 +500,7 @@ function removeContextMenu() {
   if (contextMenu) {
     contextMenu.remove();
     contextMenu = null;
+    resizeWindow();
   }
 }
 

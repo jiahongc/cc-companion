@@ -182,6 +182,19 @@ app.whenReady().then(() => {
     });
   });
 
+  // Kill a Claude Code instance (SIGTERM to process group)
+  ipcMain.handle('kill-instance', async (_, pid) => {
+    try {
+      // Kill the process group (negative PID) to clean up subagents/children
+      process.kill(-pid, 'SIGTERM');
+    } catch {
+      try {
+        // Fallback: kill just the process if process group fails
+        process.kill(pid, 'SIGTERM');
+      } catch { /* process already gone */ }
+    }
+  });
+
   // Auto-resize compact window to fit content
   ipcMain.on('resize-compact', (_, { height }) => {
     if (!compactWin || compactWin.isDestroyed()) return;

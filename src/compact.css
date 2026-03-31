@@ -351,6 +351,24 @@ html, body { background: transparent; overflow: visible; user-select: none; }
 .context-item:hover {
   background: var(--hover-bg);
 }
+.context-item.danger {
+  color: #e8590c;
+}
+.context-item.danger:hover {
+  background: rgba(232,89,12,0.1);
+}
+.context-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 3px 0;
+}
+.context-confirm {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 10px 2px;
+}
 
 /* Rename input */
 .rename-input {

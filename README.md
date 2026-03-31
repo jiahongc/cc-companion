@@ -46,6 +46,7 @@ https://github.com/user-attachments/assets/df42aecd-d983-4839-9bad-8368281be0e0
 - **Smart timer reset**: timer resets when a new user turn starts, so quick back-and-forth exchanges get fresh timers
 - Instances display in a 2-column grid, scrollable when more than 6 are running
 - **Rename instances** — right-click any tile to give it a custom name (useful when running multiple instances in the same project folder)
+- **Close instances** — right-click a tile and confirm to terminate a Claude Code session (terminal tab stays open)
 - Click any instance tile to focus its terminal window
 - Drag tiles to reorder them
 
