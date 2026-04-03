@@ -68,7 +68,7 @@ app.whenReady().then(() => {
 
   // Hide to dock
   ipcMain.on('hide-compact', () => {
-    if (compactWin && !compactWin.isDestroyed()) compactWin.hide();
+    if (compactWin && !compactWin.isDestroyed()) compactWin.minimize();
   });
 
   // Quit app
