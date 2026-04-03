@@ -30,6 +30,7 @@
     </div>
     <div class="header-buttons no-drag" id="headerButtons">
       <button class="snap-btn no-drag has-tooltip" id="settingsBtn"><span class="tooltip">Settings</span>⚙</button>
+      <button class="snap-btn no-drag has-tooltip" id="historyBtn"><span class="tooltip">History</span>⏳</button>
       <button class="snap-btn no-drag has-tooltip" id="snapBtn"><span class="tooltip">Center window</span>⊙</button>
       <button class="snap-btn no-drag has-tooltip" id="minimizeBtn"><span class="tooltip">Minimize</span>−</button>
       <button class="snap-btn no-drag has-tooltip" id="closeBtn"><span class="tooltip">Quit</span>✕</button>
@@ -64,6 +65,14 @@
         <button class="stoggle-opt" data-val="0.9">Mid</button>
         <button class="stoggle-opt active" data-val="1">Full</button>
       </div>
+    </div>
+  </div>
+  <div class="history-panel no-drag" id="historyPanel">
+    <div class="history-header">
+      <span class="history-title">Session History</span>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="ci-empty">loading…</div>
     </div>
   </div>
   <div class="detail-panel no-drag" id="detailPanel"></div>

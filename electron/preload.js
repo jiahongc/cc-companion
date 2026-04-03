@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld('api', {
   resizeCompact: (height) => ipcRenderer.send('resize-compact', { height }),
   focusInstance: (pid) => ipcRenderer.invoke('focus-instance', pid),
   killInstance: (pid) => ipcRenderer.invoke('kill-instance', pid),
+  getSessionHistory: () => ipcRenderer.invoke('get-session-history'),
+  resumeSession: (sessionId, cwd) => ipcRenderer.invoke('resume-session', sessionId, cwd),
 });

@@ -136,6 +136,11 @@ function resizeWindow() {
     if (panel && panel.classList.contains('visible')) {
       h = Math.max(h, panel.offsetTop + panel.offsetHeight + 10);
     }
+    // Account for history panel
+    const histPanel = document.getElementById('historyPanel');
+    if (histPanel && histPanel.classList.contains('visible')) {
+      h = Math.max(h, histPanel.offsetTop + histPanel.offsetHeight + 10);
+    }
     // Account for context menu
     const ctx = document.querySelector('.context-menu');
     if (ctx) {
@@ -545,6 +550,131 @@ function startRename(tile, pid) {
     if (ke.key === 'Escape') { isRenaming = false; render(); }
   });
   input.addEventListener('blur', finish);
+}
+
+// ── History panel ─────────────────────────────────────────────
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('historyBtn').addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const panel = document.getElementById('historyPanel');
+  // Close settings if open
+  document.getElementById('settingsPanel').classList.remove('visible');
+
+  panel.classList.toggle('visible');
+  resizeWindow();
+
+  if (panel.classList.contains('visible')) {
+    const list = document.getElementById('historyList');
+    list.textContent = '';
+    const loading = document.createElement('div');
+    loading.className = 'ci-empty';
+    loading.textContent = 'loading…';
+    list.appendChild(loading);
+
+    const sessions = await window.api.getSessionHistory();
+    list.textContent = '';
+
+    if (!sessions || sessions.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'ci-empty';
+      empty.textContent = 'no session history found';
+      list.appendChild(empty);
+      resizeWindow();
+      return;
+    }
+
+    sessions.forEach(s => {
+      const project = s.project ? s.project.split('/').pop() : 'unknown';
+      const msg = s.firstMessage || '(no message)';
+      const time = formatHistoryTime(s.lastTimestamp);
+      const turns = s.messageCount + ' turn' + (s.messageCount !== 1 ? 's' : '');
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.dataset.sid = s.sessionId;
+      item.dataset.cwd = s.project;
+
+      const info = document.createElement('div');
+      info.className = 'history-item-info';
+
+      const projEl = document.createElement('div');
+      projEl.className = 'history-item-project';
+      projEl.textContent = project;
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'history-item-msg';
+      msgEl.textContent = msg.length > 60 ? msg.slice(0, 60) + '…' : msg;
+
+      info.appendChild(projEl);
+      info.appendChild(msgEl);
+
+      const meta = document.createElement('div');
+      meta.className = 'history-item-meta';
+
+      const turnsEl = document.createElement('span');
+      turnsEl.className = 'history-item-turns';
+      turnsEl.textContent = turns;
+
+      const timeEl = document.createElement('span');
+      timeEl.className = 'history-item-time';
+      timeEl.textContent = time;
+
+      const btn = document.createElement('button');
+      btn.className = 'history-resume-btn';
+      btn.textContent = 'resume';
+      btn.dataset.sid = s.sessionId;
+      btn.dataset.cwd = s.project;
+
+      meta.appendChild(turnsEl);
+      meta.appendChild(timeEl);
+      meta.appendChild(btn);
+
+      item.appendChild(info);
+      item.appendChild(meta);
+      list.appendChild(item);
+    });
+    resizeWindow();
+  }
+});
+
+// History panel — resume click
+document.getElementById('historyPanel').addEventListener('click', (e) => {
+  const btn = e.target.closest('.history-resume-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  const sid = btn.dataset.sid;
+  const cwd = btn.dataset.cwd || '~';
+  if (window.api) window.api.resumeSession(sid, cwd);
+});
+
+// Close history when clicking outside
+document.addEventListener('mousedown', (e) => {
+  const panel = document.getElementById('historyPanel');
+  if (panel.classList.contains('visible') && !e.target.closest('#historyPanel') && !e.target.closest('#historyBtn')) {
+    panel.classList.remove('visible');
+    resizeWindow();
+  }
+});
+
+function formatHistoryTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return diffMins + 'm ago';
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return diffHrs + 'h ago';
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return diffDays + 'd ago';
+  const mon = d.toLocaleString('en-US', { month: 'short' });
+  return mon + ' ' + d.getDate();
 }
 
 // ── Window drag state ────────────────────────────────────────

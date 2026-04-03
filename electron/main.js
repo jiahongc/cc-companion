@@ -195,6 +195,66 @@ app.whenReady().then(() => {
     }
   });
 
+  // Get session history from ~/.claude/history.jsonl
+  ipcMain.handle('get-session-history', async () => {
+    const os = require('os');
+    const fs = require('fs');
+    const path = require('path');
+    const readline = require('readline');
+
+    const historyFile = path.join(os.homedir(), '.claude', 'history.jsonl');
+    if (!fs.existsSync(historyFile)) return [];
+
+    const sessions = new Map(); // sessionId -> { sessionId, project, firstMessage, timestamp, lastTimestamp }
+
+    try {
+      const stream = fs.createReadStream(historyFile, { encoding: 'utf8' });
+      const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+      for await (const line of rl) {
+        if (!line.trim()) continue;
+        try {
+          const entry = JSON.parse(line);
+          const { sessionId, project, display, timestamp } = entry;
+          if (!sessionId) continue;
+
+          if (!sessions.has(sessionId)) {
+            sessions.set(sessionId, {
+              sessionId,
+              project: project || '',
+              firstMessage: display || '',
+              timestamp,
+              lastTimestamp: timestamp,
+              messageCount: 1,
+            });
+          } else {
+            const s = sessions.get(sessionId);
+            s.lastTimestamp = timestamp;
+            s.messageCount++;
+          }
+        } catch { /* skip malformed lines */ }
+      }
+    } catch { return []; }
+
+    // Return sorted by most recent, limit to 50
+    return Array.from(sessions.values())
+      .sort((a, b) => b.lastTimestamp - a.lastTimestamp)
+      .slice(0, 50);
+  });
+
+  // Resume a Claude Code session in a new Terminal tab
+  ipcMain.handle('resume-session', async (_, sessionId, cwd) => {
+    const script = `
+      tell application "Terminal"
+        activate
+        do script "cd ${cwd.replace(/"/g, '\\"')} && claude --resume ${sessionId}"
+      end tell
+    `;
+    return new Promise((resolve) => {
+      execFile('osascript', ['-e', script], () => resolve());
+    });
+  });
+
   // Auto-resize compact window to fit content
   ipcMain.on('resize-compact', (_, { height }) => {
     if (!compactWin || compactWin.isDestroyed()) return;
