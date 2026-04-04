@@ -50,6 +50,12 @@ https://github.com/user-attachments/assets/df42aecd-d983-4839-9bad-8368281be0e0
 - Click any instance tile to focus its terminal window
 - Drag tiles to reorder them
 
+### Session History
+- **History panel** (⏳) — browse your last 50 Claude Code sessions across all projects
+- Each entry shows project name, first message, turn count, and relative time
+- **Resume button** — opens a new Terminal tab with `claude --resume` in the correct project directory
+- Reads directly from `~/.claude/history.jsonl` — no external services
+
 ### Settings Panel
 Gear button opens a floating popup with all settings (persisted across restarts):
 - **Theme** — toggle between Dark and Light mode
@@ -68,8 +74,9 @@ Click the `ⓘ` button on any tile to view detailed stats:
 
 ### Controls
 - **Settings** (⚙) — open settings panel
+- **History** (⏳) — browse and resume past sessions
 - **Center** (⊙) — snap the island to center-top of screen
-- **Minimize** (−) — hide to dock
+- **Minimize** (−) — minimize to dock (native macOS animation)
 - **Quit** (✕) — exit the app
 - **Tooltips** — hover any button to see its function
 

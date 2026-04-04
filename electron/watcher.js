@@ -273,13 +273,15 @@ class ClaudeWatcher extends EventEmitter {
                 existing._lastActiveTurn = existing.turnCount;
               } else {
                 // JSONL says idle — apply grace period to prevent flickering
+                // Also check CPU: if process is still burning CPU, reset grace timer
                 if (wasActive) {
                   if (!existing._graceStart) {
-                    // First idle poll — start grace period, stay "active" for now
                     existing._graceStart = now;
-                    // Don't change active state yet
+                  } else if (cpu >= 5) {
+                    // CPU still hot — reset grace timer, stay active
+                    existing._graceStart = now;
                   } else if (now - existing._graceStart >= 3000) {
-                    // Idle for 3+ seconds — actually transition to idle
+                    // JSONL idle AND CPU low for 3+ seconds — actually transition
                     existing.active = false;
                     existing.idleStart = now;
                     existing._graceStart = null;
