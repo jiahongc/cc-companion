@@ -166,7 +166,16 @@ class ClaudeWatcher extends EventEmitter {
 
     // assistant(tool_use) — a tool was dispatched and is executing.
     // Tools (builds, browser, subagents) can run for minutes without writes.
+    // Exception: user-input tools (AskUserQuestion) are waiting for the human,
+    // not doing work — treat those as idle.
     if (entry.type === 'assistant' && entry.message?.stop_reason === 'tool_use') {
+      const content = entry.message?.content;
+      if (Array.isArray(content)) {
+        const hasUserInputTool = content.some(
+          block => block.type === 'tool_use' && block.name === 'AskUserQuestion'
+        );
+        if (hasUserInputTool) return false;
+      }
       return fileAge < 300000 || cpu >= 5;  // 5 min
     }
 

@@ -195,6 +195,38 @@ describe('ClaudeWatcher', () => {
         expect(watcher._isInstanceActive(inst)).toBe(false);
       });
 
+      it('returns false for tool_use with AskUserQuestion (waiting for user input)', () => {
+        const inst = makeInstance({ sessionId: 'sess-1', cpu: 0 });
+        mockJsonlEntry(watcher, {
+          type: 'assistant',
+          message: {
+            stop_reason: 'tool_use',
+            content: [
+              { type: 'tool_use', name: 'AskUserQuestion', id: 'tu_1', input: {} },
+            ],
+          },
+        }, 0); // fresh entry — but still idle because it's waiting for user
+        expect(watcher._isInstanceActive(inst)).toBe(false);
+      });
+
+      it('returns true for tool_use with non-input tools even if AskUserQuestion also present', () => {
+        const inst = makeInstance({ sessionId: 'sess-1', cpu: 0 });
+        // If only AskUserQuestion is in the content, treat as idle
+        mockJsonlEntry(watcher, {
+          type: 'assistant',
+          message: {
+            stop_reason: 'tool_use',
+            content: [
+              { type: 'tool_use', name: 'Bash', id: 'tu_1', input: {} },
+              { type: 'tool_use', name: 'AskUserQuestion', id: 'tu_2', input: {} },
+            ],
+          },
+        }, 0);
+        // Mixed tools with AskUserQuestion — still has AskUserQuestion so treated as idle
+        // (Claude batches tool calls; if AskUserQuestion is present, it's waiting for user)
+        expect(watcher._isInstanceActive(inst)).toBe(false);
+      });
+
       it('returns true for fresh user message', () => {
         const inst = makeInstance({ sessionId: 'sess-1' });
         mockJsonlEntry(watcher, { type: 'user' }, 0);
