@@ -49,7 +49,7 @@ https://github.com/user-attachments/assets/df42aecd-d983-4839-9bad-8368281be0e0
 - Instances display in a 2-column grid, scrollable when more than 6 are running
 - **Rename instances** — right-click any tile to give it a custom name (useful when running multiple instances in the same project folder)
 - **Close instances** — right-click a tile and confirm to terminate a Claude Code session (terminal tab stays open)
-- Click any instance tile to focus its terminal window
+- Click any instance tile to focus its terminal window — works across Terminal.app, iTerm2, Ghostty, WezTerm, kitty, Cursor, and VS Code (see [Terminal support](#terminal-support))
 - Drag tiles to reorder them
 
 ### Session History
@@ -116,7 +116,7 @@ cc-companion/
 │   ├── compact.css      # Dynamic Island styles
 │   └── compact.js       # Dynamic Island renderer
 ├── test/
-│   └── watcher.test.js  # 61 tests covering detection, state, tokens, formatting
+│   └── watcher.test.js  # 64 tests covering detection, state, tokens, formatting
 ├── assets/
 │   ├── icon_1024.png    # App icon (1024x1024 source)
 │   ├── icon.icns        # macOS app icon
@@ -164,10 +164,24 @@ From the JSONL it extracts:
 
 Stats refresh every 5 seconds. Only emits updates when data actually changes (deduplicated via snapshot key).
 
+## Terminal support
+
+Clicking an instance tile brings the hosting terminal tab to the front. The best focus mechanism depends on what the terminal exposes:
+
+| Terminal | Mechanism | Notes |
+|---|---|---|
+| Terminal.app | Native AppleScript, TTY match | Works out of the box |
+| iTerm2 | Native AppleScript, TTY match | Works out of the box |
+| Ghostty | Native AppleScript, CWD match | Works out of the box |
+| WezTerm | `wezterm cli activate-pane`, CWD match | Works out of the box — uses the `wezterm` CLI |
+| kitty | `kitty @ focus-tab`, CWD match | Requires `allow_remote_control yes` and a `listen_on` socket in `kitty.conf` |
+| Cursor / VS Code | System Events, window-title match | Works because these set their window title to the project name |
+| Warp, Alacritty, Hyper, Rio, Tabby | System Events fallback | Best-effort — will at least bring the app to the front |
+
 ## Testing
 
 ```bash
-npm test          # run all 61 tests
+npm test          # run all 64 tests
 npm run test:watch  # watch mode
 ```
 

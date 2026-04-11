@@ -1,6 +1,6 @@
 {
   "name": "cc-companion",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A desktop companion app that monitors Claude Code sessions and serves curated content while you wait",
   "author": "CC Companion Contributors",
   "license": "MIT",

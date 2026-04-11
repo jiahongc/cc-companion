@@ -35,6 +35,76 @@ function createCompactWindow() {
   return compactWin;
 }
 
+// ── Helpers for terminal apps with their own remote-control CLIs ─────────
+// Electron launched from Finder has a minimal PATH, so we prefer the app
+// bundle binary and fall back to $PATH.
+function runCli(bundledPath, fallbackCmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    execFile(bundledPath, args, opts, (err, stdout, stderr) => {
+      if (err && err.code === 'ENOENT') {
+        execFile(fallbackCmd, args, opts, (e2, o2, s2) => {
+          resolve({ err: e2, stdout: o2, stderr: s2 });
+        });
+      } else {
+        resolve({ err, stdout, stderr });
+      }
+    });
+  });
+}
+
+// WezTerm: use `wezterm cli list --format json` + `wezterm cli activate-pane`.
+// Works out of the box whenever WezTerm is running (no user config required).
+async function focusWezTermByCwd(targetCwd) {
+  const bundled = '/Applications/WezTerm.app/Contents/MacOS/wezterm';
+  const fallback = 'wezterm';
+  const list = await runCli(bundled, fallback, ['cli', 'list', '--format', 'json'], { timeout: 3000 });
+  let paneId = null;
+  if (!list.err && list.stdout) {
+    try {
+      const panes = JSON.parse(list.stdout);
+      for (const p of panes) {
+        if (!p.cwd) continue;
+        // WezTerm reports cwd as a file:// URL, e.g. "file://host.local/Users/foo/proj"
+        const cwd = String(p.cwd).replace(/^file:\/\/[^/]*/, '');
+        if (cwd === targetCwd) {
+          paneId = p.pane_id;
+          break;
+        }
+      }
+    } catch { /* malformed JSON — fall through to activate */ }
+  }
+  if (paneId != null) {
+    await runCli(bundled, fallback, ['cli', 'activate-pane', '--pane-id', String(paneId)], { timeout: 3000 });
+  }
+  // Bring WezTerm to the front regardless of whether we matched a pane.
+  return new Promise((resolve) => {
+    execFile('osascript', ['-e', 'tell application "WezTerm" to activate'], () => resolve());
+  });
+}
+
+// kitty: use `kitty @ focus-tab --match cwd:PATH`. This requires the user to
+// have enabled remote control (`allow_remote_control yes` and typically a
+// `listen_on` socket in kitty.conf). If remote control isn't available we
+// silently fall back to just activating the app.
+async function focusKittyByCwd(targetCwd) {
+  const bundled = '/Applications/kitty.app/Contents/MacOS/kitty';
+  const fallback = 'kitty';
+  // Try with $KITTY_LISTEN_ON if set, then without --to (in case the socket
+  // path is propagated another way). Either may fail silently.
+  const attempts = [];
+  if (process.env.KITTY_LISTEN_ON) {
+    attempts.push(['@', '--to', process.env.KITTY_LISTEN_ON, 'focus-tab', '--match', `cwd:${targetCwd}`]);
+  }
+  attempts.push(['@', 'focus-tab', '--match', `cwd:${targetCwd}`]);
+  for (const args of attempts) {
+    const r = await runCli(bundled, fallback, args, { timeout: 3000 });
+    if (!r.err) break;
+  }
+  return new Promise((resolve) => {
+    execFile('osascript', ['-e', 'tell application "kitty" to activate'], () => resolve());
+  });
+}
+
 app.whenReady().then(() => {
   // Set dock icon on macOS
   if (process.platform === 'darwin') {
@@ -100,6 +170,23 @@ app.whenReady().then(() => {
     const appName = (watcher ? watcher.getTerminalApp(pid) : null) || 'Terminal';
     const project = inst?.project || '';
     const tty = inst?.tty ? `/dev/${inst.tty}` : '';
+    const instCwd = inst?._sessionCwd || inst?.cwd || '';
+
+    // WezTerm and kitty have their own remote-control CLIs that are more
+    // reliable than AppleScript window-title matching. Handle them up front.
+    if (appName === 'WezTerm') {
+      return focusWezTermByCwd(instCwd);
+    }
+    if (appName === 'kitty') {
+      return focusKittyByCwd(instCwd);
+    }
+
+    // System Events uses CFBundleName as the process name, which can differ from our display name.
+    const processNameMap = { 'Visual Studio Code': 'Code' };
+    const processName = processNameMap[appName] || appName;
+
+    // Escape a string for safe interpolation into an AppleScript double-quoted literal.
+    const asEscape = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
     let script;
     if (appName === 'Terminal' && tty) {
@@ -146,13 +233,35 @@ app.whenReady().then(() => {
           end repeat
         end tell
       `;
+    } else if (appName === 'Ghostty') {
+      // Ghostty ships a native AppleScript dictionary. Match terminals by working
+      // directory and use the `focus` command, which selects the tab and raises its
+      // window in one call. Prefer _sessionCwd (from ~/.claude/sessions/{pid}.json)
+      // over the lsof-derived cwd since it matches what Ghostty reports.
+      const ghosttyCwd = asEscape(inst?._sessionCwd || inst?.cwd || '');
+      script = `
+        tell application "Ghostty"
+          repeat with term in (every terminal)
+            try
+              if (working directory of term) is equal to "${ghosttyCwd}" then
+                focus term
+                return
+              end if
+            end try
+          end repeat
+          -- Fallback: no terminal matched by cwd. Bring the front window forward.
+          try
+            activate window 1
+          end try
+        end tell
+      `;
     } else {
       // Cursor, VS Code, etc.: match window by project name, AXRaise it
       script = `
         tell application "System Events"
-          if exists process "${appName}" then
-            set frontmost of process "${appName}" to true
-            tell process "${appName}"
+          if exists process "${processName}" then
+            set frontmost of process "${processName}" to true
+            tell process "${processName}"
               set allWindows to every window
               set matched to false
               repeat with w in allWindows

@@ -177,8 +177,9 @@ describe('ClaudeWatcher', () => {
         expect(watcher._isInstanceActive(inst)).toBe(true);
       });
 
-      it('returns true for tool_use entry within 5 min', () => {
+      it('returns true for tool_use entry within 5 min with child processes', () => {
         const inst = makeInstance({ sessionId: 'sess-1', cpu: 0 });
+        vi.spyOn(watcher, '_hasChildProcesses').mockReturnValue(true);
         mockJsonlEntry(watcher, {
           type: 'assistant',
           message: { stop_reason: 'tool_use' },
@@ -186,12 +187,23 @@ describe('ClaudeWatcher', () => {
         expect(watcher._isInstanceActive(inst)).toBe(true);
       });
 
-      it('returns false for tool_use entry older than 5 min with no CPU', () => {
+      it('returns false for tool_use entry older than 5 min with child processes but no CPU', () => {
         const inst = makeInstance({ sessionId: 'sess-1', cpu: 0 });
+        vi.spyOn(watcher, '_hasChildProcesses').mockReturnValue(true);
         mockJsonlEntry(watcher, {
           type: 'assistant',
           message: { stop_reason: 'tool_use' },
         }, 310000); // 5m10s
+        expect(watcher._isInstanceActive(inst)).toBe(false);
+      });
+
+      it('returns false for tool_use with no children and low CPU (permission prompt)', () => {
+        const inst = makeInstance({ sessionId: 'sess-1', cpu: 0 });
+        vi.spyOn(watcher, '_hasChildProcesses').mockReturnValue(false);
+        mockJsonlEntry(watcher, {
+          type: 'assistant',
+          message: { stop_reason: 'tool_use' },
+        }, 15000); // 15s old, no children = permission prompt
         expect(watcher._isInstanceActive(inst)).toBe(false);
       });
 

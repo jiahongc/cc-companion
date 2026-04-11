@@ -49,7 +49,7 @@ https://github.com/user-attachments/assets/df42aecd-d983-4839-9bad-8368281be0e0
 - 2 列网格排列，超过 6 个自动滚动
 - **重命名** —— 右键磁贴自定义名称，同一项目跑多个实例时很实用
 - **关闭实例** —— 右键磁贴确认后终止会话（终端标签页不受影响）
-- 点击磁贴直接聚焦对应终端窗口
+- 点击磁贴直接聚焦对应终端窗口——支持 Terminal.app、iTerm2、Ghostty、WezTerm、kitty、Cursor、VS Code（详见[终端支持](#终端支持)）
 - 拖拽磁贴自由排序
 
 ### 会话历史
@@ -164,10 +164,24 @@ cc-companion/
 
 每 5 秒刷新一次，数据无变化时不推送更新（快照去重）。
 
+## 终端支持
+
+点击实例磁贴会将对应终端标签页置前。聚焦方式因终端而异：
+
+| 终端 | 机制 | 说明 |
+|---|---|---|
+| Terminal.app | 原生 AppleScript，按 TTY 匹配 | 开箱即用 |
+| iTerm2 | 原生 AppleScript，按 TTY 匹配 | 开箱即用 |
+| Ghostty | 原生 AppleScript，按 CWD 匹配 | 开箱即用 |
+| WezTerm | `wezterm cli activate-pane`，按 CWD 匹配 | 开箱即用，使用 `wezterm` CLI |
+| kitty | `kitty @ focus-tab`，按 CWD 匹配 | 需要在 `kitty.conf` 中开启 `allow_remote_control yes` 并配置 `listen_on` |
+| Cursor / VS Code | System Events，按窗口标题匹配 | 窗口标题默认包含项目名，可用 |
+| Warp、Alacritty、Hyper、Rio、Tabby | System Events 兜底 | 尽力而为——至少会把应用带到前台 |
+
 ## 测试
 
 ```bash
-npm test          # 运行全部 61 个测试
+npm test          # 运行全部 64 个测试
 npm run test:watch  # 监听模式
 ```
 

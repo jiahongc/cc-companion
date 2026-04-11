@@ -1,4 +1,4 @@
-const { exec } = require('child_process');
+const { exec, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
@@ -45,6 +45,11 @@ class ClaudeWatcher extends EventEmitter {
         if (comm.includes('/Visual Studio Code.app/') || comm.includes('/Code.app/')) return 'Visual Studio Code';
         if (comm.includes('/Alacritty.app/')) return 'Alacritty';
         if (comm.includes('/kitty.app/')) return 'kitty';
+        if (comm.includes('/Ghostty.app/') || comm.includes('ghostty')) return 'Ghostty';
+        if (comm.includes('/Hyper.app/')) return 'Hyper';
+        if (comm.includes('/Rio.app/')) return 'Rio';
+        if (comm.includes('/WezTerm.app/') || comm.includes('wezterm')) return 'WezTerm';
+        if (comm.includes('/Tabby.app/')) return 'Tabby';
 
         currentPid = ppid;
       }
@@ -122,6 +127,16 @@ class ClaudeWatcher extends EventEmitter {
     return null;
   }
 
+  // Check if a process has any child processes (tools spawn children, permission prompts don't)
+  _hasChildProcesses(pid) {
+    try {
+      const result = execFileSync('pgrep', ['-P', String(parseInt(pid))], { timeout: 2000, encoding: 'utf8' });
+      return result.trim().length > 0;
+    } catch {
+      return false; // pgrep exits 1 when no children found
+    }
+  }
+
   _isInstanceActive(inst) {
     const result = this._getLastJsonlEntry(inst);
 
@@ -176,7 +191,22 @@ class ClaudeWatcher extends EventEmitter {
         );
         if (hasUserInputTool) return false;
       }
-      return fileAge < 300000 || cpu >= 5;  // 5 min
+
+      // CPU active = definitely working
+      if (cpu >= 5) return true;
+
+      // Just dispatched = give it a moment to start
+      if (fileAge < 10000) return true;
+
+      // Low CPU, not fresh: distinguish permission prompts from running tools.
+      // Running tools (Bash, subagents) have child processes.
+      // Permission prompts have none — Claude is just blocked on stdin.
+      if (this._hasChildProcesses(inst.pid)) {
+        return fileAge < 300000;  // 5 min for running tools
+      }
+
+      // No children, low CPU, >10s old — likely a permission prompt
+      return false;
     }
 
     // user message (prompt or tool result) — Claude is processing input.
