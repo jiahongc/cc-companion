@@ -425,8 +425,8 @@ function formatTokens(n) {
 function getContextLimit(model, oneMBeta, contextTokens = 0) {
   if (!model) return 200000;
   const m = model.toLowerCase();
-  // Only opus-4-6/4-7 and sonnet-4-6 support the 1M-context beta.
-  const supports1M = /opus-4-[67]\b|sonnet-4-6\b/.test(m);
+  // Only opus-4-6/4-7/4-8, sonnet-4-6, and fable-5 support the 1M-context beta.
+  const supports1M = /opus-4-[678]\b|sonnet-4-6\b|fable-5\b/.test(m);
   if (!supports1M) return 200000;
   // Two signals for 1M: env var (shell or settings.json) OR observed context
   // exceeding 200k (catches `/model [1m]` runtime toggle which isn't persisted).

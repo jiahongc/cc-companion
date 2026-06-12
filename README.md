@@ -159,7 +159,7 @@ From the JSONL it extracts:
 - **Turn count** — real user prompts (excludes tool-use results, auto-compact summaries, and meta/system-injected messages)
 - **Token usage** — input, output, cache read, cache creation tokens
 - **Context tokens** — current context window fill (input + cache read + cache creation from last entry)
-- **Model** — which Claude model is active (Opus 4.7, Opus 4.6, Sonnet 4.6, Haiku 4.5, and earlier)
+- **Model** — which Claude model is active (Fable 5, Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6, Haiku 4.5, and earlier)
 - **Git branch** — current branch name
 
 ### Context limit detection
@@ -167,7 +167,7 @@ The context-usage bar denominator adapts to the model and whether the 1M-token b
 
 | Model | Default | With 1M beta |
 |---|---|---|
-| Opus 4.7, Opus 4.6, Sonnet 4.6 | 200k | 1M |
+| Fable 5, Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6 | 200k | 1M |
 | Opus 4.5 / 4.1 / 4, Sonnet 4.5 / 4, all Haiku | 200k | 200k (no beta support) |
 
 The 1M beta is detected from two signals:
