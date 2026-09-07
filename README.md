@@ -37,6 +37,8 @@ https://github.com/user-attachments/assets/df42aecd-d983-4839-9bad-8368281be0e0
   </tr>
 </table>
 
+[Get started](#getting-started) · [Features](#features) · [Terminal support](#terminal-support) · [Testing](#testing) · [Privacy](#security--privacy)
+
 ## Features
 
 ### Claude Code Instance Tracking
@@ -89,11 +91,11 @@ Click the `ⓘ` button on any tile to view detailed stats:
 ```bash
 git clone https://github.com/jiahongc/cc-companion.git
 cd cc-companion
-npm install
+npm ci
 npm start
 ```
 
-Requires [Node.js](https://nodejs.org/) v18+.
+Use [Node.js](https://nodejs.org/) 22.12+ for development and the current test dependencies. Terminal integration is designed for macOS.
 
 ### DMG download
 
@@ -116,7 +118,7 @@ cc-companion/
 │   ├── compact.css      # Dynamic Island styles
 │   └── compact.js       # Dynamic Island renderer
 ├── test/
-│   └── watcher.test.js  # 66 tests covering detection, state, tokens, formatting
+│   └── watcher.test.js  # Tests covering detection, state, tokens, formatting
 ├── assets/
 │   ├── icon_1024.png    # App icon (1024x1024 source)
 │   ├── icon.icns        # macOS app icon
@@ -193,7 +195,7 @@ Clicking an instance tile brings the hosting terminal tab to the front. The best
 ## Testing
 
 ```bash
-npm test          # run all 66 tests
+npm test          # run the test suite
 npm run test:watch  # watch mode
 ```
 
@@ -211,9 +213,9 @@ Output goes to the `dist/` folder.
 
 ## Security & Privacy
 
-- **Local only** — CC Companion runs entirely on your machine. No data is sent to any server, no network requests are made, no telemetry or analytics.
-- **Read-only** — The app only reads Claude Code's session files (`~/.claude/sessions/`, `~/.claude/projects/`). It never writes to them or modifies your Claude sessions in any way.
-- **No secrets** — The app does not access, store, or transmit API keys, tokens, or credentials. It reads process metadata (`ps`) and session JSONL files, which contain conversation structure but not your API keys.
+- **Local monitoring** — Reads process metadata and Claude session records on your Mac. Session records can contain conversation text and other sensitive context.
+- **Session controls** — Monitoring reads existing records. Explicit **Resume** and **Close** actions start or terminate Claude processes; resuming a session can cause Claude to update its own records.
+- **Process environment** — Context-limit detection inspects process environment metadata. Do not treat the application as unable to encounter credentials or sensitive text.
 - **Process isolation** — Electron runs with `contextIsolation: true` and `nodeIntegration: false`. The renderer communicates with the main process only through a restricted preload API.
 - **Open source** — Run from source so you can verify the code yourself before running it.
 
